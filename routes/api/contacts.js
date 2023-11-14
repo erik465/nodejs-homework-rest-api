@@ -58,6 +58,9 @@ router.delete("/:contactId", validateId, async (req, res, next) => {
 router.put("/:contactId", validateId, async (req, res, next) => {
   try {
     const response = await updateContact(req.params.contactId, req.body);
+    if (response == null) {
+      return next();
+    }
     res.json(response);
   } catch (err) {
     return next(err);
@@ -73,7 +76,10 @@ router.patch("/:contactId", validateId, async (req, res, next) => {
       });
     }
     const response = await updateStatusContact(req.params.contactId, req.body);
-    res.json({ new_contact: response });
+    if (response == null) {
+      return next();
+    }
+    res.json(response);
   } catch (err) {
     return next(err);
   }

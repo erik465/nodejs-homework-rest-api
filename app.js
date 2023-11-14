@@ -27,6 +27,14 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  res.status(400).json({
+    status: err.message,
+    code: 400,
+    message: "Validation Error",
+  });
+});
+
+app.use((err, req, res, next) => {
   res.status(500).json({
     message: err.message,
     code: 500,
