@@ -1,7 +1,7 @@
 const Contact = require("../schemas/contact");
 
 const listContacts = async (req) => {
-  return Contact.find({ owner: req.user.id, favorite: req?.params?.favorite });
+  return Contact.find({ owner: req.user.id });
 };
 
 const getContactById = async (contactId) => {
