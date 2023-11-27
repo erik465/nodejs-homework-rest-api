@@ -2,11 +2,33 @@ require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const path = require("path");
+const multer = require("multer");
+
+const uploadDir = path.join(process.cwd(), "public", "avatars");
+
+const storage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (req, file, cb) => {
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
+    );
+  },
+});
+const upload = multer({ storage });
 
 const {
   validateUser,
   authMiddleware,
 } = require("../../middlewares/validation");
+
+const avatarOptions = {
+  s: "200",
+  r: "pg",
+  d: "identicon",
+};
 
 const User = require("../../schemas/user");
 
@@ -27,6 +49,7 @@ usersRouter.post("/register", validateUser, async function (req, res, next) {
     const createdUser = await User.create({
       email: email,
       password: passwordHash,
+      avatarURL: gravatar.url(email, avatarOptions, true),
     });
     return res.status(201).json({
       Status: "201 Created",
@@ -136,5 +159,33 @@ usersRouter.patch("/", authMiddleware, async (req, res, next) => {
     return next(e);
   }
 });
+
+usersRouter.patch(
+  "/avatar",
+  authMiddleware,
+  upload.single("avatar"),
+  async (req, res, next) => {
+    if (!req.file) {
+      res.json({
+        Status: "400 Bad Request",
+        Message: "Provide an image",
+      });
+    }
+
+    await User.findByIdAndUpdate(
+      req.user.id,
+      { avatarURL: req.file ? req.file.filename : null },
+      { new: true }
+    );
+
+    return res.json({
+      Status: "400 Bad Request",
+      ContentType: "application/json",
+      ResponseBody: {
+        avatarURL: `localhost:3000/avatars/${req.file.originalname}`,
+      },
+    });
+  }
+);
 
 module.exports = usersRouter;
