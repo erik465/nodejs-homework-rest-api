@@ -7,13 +7,13 @@ const {
   updateContact,
   updateStatusContact,
 } = require("../../models/contacts");
-const validateId = require("../../middlewares/validation");
+const { validateId } = require("../../middlewares/validation");
 
 const router = express.Router();
 
 router.get("/", async (req, res, next) => {
   try {
-    const message = await listContacts();
+    const message = await listContacts(req);
     res.json(message);
   } catch (err) {
     return next(err);
@@ -27,6 +27,12 @@ router.get("/:contactId", validateId, async (req, res, next) => {
     if (message === null) {
       return next();
     }
+    if (message.owner.toString() !== req.user.id) {
+      res.status(403).json({
+        Status: "403 Forbidden",
+        Message: "Forbidden",
+      });
+    }
     res.json(message);
   } catch (err) {
     return next(err);
@@ -35,7 +41,7 @@ router.get("/:contactId", validateId, async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   try {
-    const response = await addContact(req.body);
+    const response = await addContact(req);
     res.status(201);
     res.json(response);
   } catch (err) {
@@ -45,6 +51,14 @@ router.post("/", async (req, res, next) => {
 
 router.delete("/:contactId", validateId, async (req, res, next) => {
   try {
+    const contact = await getContactById(req.params.contactId);
+    if (contact.owner.toString() !== req.user.id) {
+      return res.status(403).json({
+        Status: "403 Forbidden",
+        Message: "Forbidden",
+      });
+    }
+
     const response = await removeContact(req.params.contactId);
     if (response == null) {
       return next();
@@ -57,6 +71,14 @@ router.delete("/:contactId", validateId, async (req, res, next) => {
 
 router.put("/:contactId", validateId, async (req, res, next) => {
   try {
+    const contact = await getContactById(req.params.contactId);
+    if (contact.owner.toString() !== req.user.id) {
+      return res.status(403).json({
+        Status: "403 Forbidden",
+        Message: "Forbidden",
+      });
+    }
+
     const response = await updateContact(req.params.contactId, req.body);
     if (response == null) {
       return next();
@@ -69,6 +91,14 @@ router.put("/:contactId", validateId, async (req, res, next) => {
 
 router.patch("/:contactId", validateId, async (req, res, next) => {
   try {
+    const contact = await getContactById(req.params.contactId);
+    if (contact.owner.toString() !== req.user.id) {
+      return res.status(403).json({
+        Status: "403 Forbidden",
+        Message: "Forbidden",
+      });
+    }
+
     if (!req.body.favorite) {
       return res.json({
         status: 400,

@@ -1,7 +1,7 @@
 const Contact = require("../schemas/contact");
 
-const listContacts = async () => {
-  return Contact.find();
+const listContacts = async (req) => {
+  return Contact.find({ owner: req.user.id });
 };
 
 const getContactById = async (contactId) => {
@@ -12,12 +12,13 @@ const removeContact = async (contactId) => {
   return Contact.findByIdAndDelete({ _id: contactId });
 };
 
-const addContact = async (body) => {
+const addContact = async (req) => {
   return Contact.create({
-    name: body.name,
-    email: body.email,
-    phone: body.phone,
-    favourite: body.favourite,
+    name: req.body.name,
+    email: req.body.email,
+    phone: req.body.phone,
+    favourite: req.body.favourite,
+    owner: req.user.id,
   });
 };
 
