@@ -179,7 +179,7 @@ usersRouter.patch(
     );
 
     return res.json({
-      Status: "400 Bad Request",
+      Status: "200 OK",
       ContentType: "application/json",
       ResponseBody: {
         avatarURL: `localhost:3000/avatars/${req.file.originalname}`,
