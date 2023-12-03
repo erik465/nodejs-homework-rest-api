@@ -1,10 +1,12 @@
 require("dotenv").config();
+const { v4: uuidv4 } = require("uuid");
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const gravatar = require("gravatar");
 const path = require("path");
 const multer = require("multer");
+const sendMail = require("../../helpers/email");
 
 const uploadDir = path.join(process.cwd(), "public", "avatars");
 
@@ -46,10 +48,20 @@ usersRouter.post("/register", validateUser, async function (req, res, next) {
       });
     }
     const passwordHash = await bcrypt.hash(password, 10);
+    const verificationToken = uuidv4();
+
+    await sendMail({
+      to: email,
+      subject: "Verify Email on Contacts Book",
+      html: `To confirm email click on <a href="http://localhost:3000/users/verify/${verificationToken}">link</a>`,
+      text: `To confirm go to link localhost:3000/users/verify/${verificationToken}`,
+    });
+
     const createdUser = await User.create({
       email: email,
       password: passwordHash,
       avatarURL: gravatar.url(email, avatarOptions, true),
+      verificationToken: verificationToken,
     });
     return res.status(201).json({
       Status: "201 Created",
@@ -66,6 +78,11 @@ usersRouter.post("/login", validateUser, async function (req, res, next) {
     const user = await User.findOne({ email });
     if (!user) {
       next();
+    }
+    if (!user.verify) {
+      return res.json({
+        status: "401 Not verified",
+      });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -187,5 +204,61 @@ usersRouter.patch(
     });
   }
 );
+
+usersRouter.get("/verify/:verificationToken", async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+    const user = await User.findOne({ verificationToken });
+    if (user.verify) {
+      return res.send({
+        Status: "400 Bad Request",
+        ResponseBody: {
+          message: "User has been already verified",
+        },
+      });
+    }
+    await User.findByIdAndUpdate(
+      { _id: user.id },
+      { verificationToken: null, verify: true },
+      { new: true }
+    );
+
+    res.send({
+      Status: "200 OK",
+      ResponseBody: {
+        message: "Verification successful",
+      },
+    });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+usersRouter.post("/verify", async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({
+      status: "400 Bad Request",
+      code: 400,
+      message: "Missing required field email",
+    });
+  }
+  const user = await User.findOne({ email });
+  if (user.verify) {
+    return res.send({
+      Status: "400 Bad Request",
+      ResponseBody: {
+        message: "User has been already verified",
+      },
+    });
+  }
+
+  await sendMail({
+    to: email,
+    subject: "Verify Email on Contacts Book",
+    html: `To confirm email click on <a href="http://localhost:3000/users/verify/${user.verificationToken}">link</a>`,
+    text: `To confirm go to link localhost:3000/users/verify/${user.verificationToken}`,
+  });
+});
 
 module.exports = usersRouter;
